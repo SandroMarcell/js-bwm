@@ -1,0 +1,117 @@
+<!--
+   Copyright 2016 Sandro Marcell <smarcell@mail.com>
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 2 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+   MA 02110-1301, USA.
+-->
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+	<title>js-bwm</title>
+	<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+	<meta name="generator" content="Geany 1.24.1" />
+	<meta name="author" content="Sandro Marcell" />
+	<link rel="stylesheet" type="text/css" href="css/styles.css" />
+	<link rel="icon" type="image/x-icon" href="images/favicon.ico" />
+	<script type="text/javascript" src="js/jquery-3.1.1.min.js"></script>
+	<script type="text/javascript" src="js/jquery.flot.min.js"></script>
+	<script type="text/javascript" src="js/jquery.flot.time.min.js"></script>
+	<script type="text/javascript" src="js/jquery.flot.canvas.min.js"></script>
+	<script type="text/javascript" src="js/jquery.flot.axislabels.min.js"></script>
+	<script type="text/javascript">
+		$(document).ready(function() {
+			var download = [], upload = [];
+
+			// Convert received values in bytes to bit, Kb or Mb
+			function bytes2Bits(value, axis) {
+				var round = function(v, d) { return Number(Math.round(v + "e" + d) + "e-" + d); };
+				if (value > 1000000)
+					return round((value * 8 / 1000000), 1).toFixed(axis.tickDecimals) + " M";
+				else if (value > 1000)
+					return round((value / 128), 1).toFixed(axis.tickDecimals) + " K";
+				else
+					return (value).toFixed(axis.tickDecimals) + " B";
+			}
+
+			// Options that define the visual style of graphics
+			var options = {
+				canvas:		true,
+				series:		{ shadowSize: 0 },
+				axisLabels:	{ show: true },
+				lines:		{ show: true, fill: true },
+				xaxis:		{ mode: "time", timezone: "browser" },
+				yaxes:		[{
+							min: 0,
+							position: "left",
+							axisLabel: "Bits per second",
+							axisLabelUseCanvas: true,
+							tickFormatter: bytes2Bits
+						}, { show: false }],
+			};
+
+			// Self-invoking function every 3s for update values
+			(function getValues() {
+				$.ajax({
+					url: "stats.php",
+					method: "GET",
+					async: true,
+					cache: false,
+					dataType: "json",
+					success: function(data) {
+						download.push(data.download);
+						upload.push(data.upload);
+
+						// Ensures that only the values of the last minute are shown
+						if (download.length > 60 && upload.length > 60) {
+							download.shift();
+							upload.shift();
+						}
+
+						var values = [
+							{ label: "Download", data: download, yaxis: 1, color: "#FF0000" },
+							{ label: "Upload", data: upload, color: "#0062FF" }
+						];
+
+						$.plot($("#placeholder"), values, options);
+					}
+				});
+				setTimeout(getValues, 3000);
+			})();
+		});
+	</script>
+</head>
+
+<body>
+	<div id="header">
+		<h2>js-bwm</h2>
+	</div>
+	<div id="content" title="Updated every 3 seconds">
+			<p>Real-time bandwidth graphs</p>
+		<div class="demo-container">
+			<div id="placeholder" class="demo-placeholder"></div>
+		</div>
+	</div>
+	<div id="footer">
+			js-bwm &copy; 2016-<span id="year"></span> <a href="https://gitlab.com/smarcell">Sandro Marcell</a>
+	</div>
+	<script type="text/javascript">
+			var current_year = document.getElementById("year").textContent = new Date().getFullYear();
+	</script>
+</body>
+</html>
